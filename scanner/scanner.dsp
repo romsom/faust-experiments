@@ -22,18 +22,20 @@ ip = smooth(tau2pole(ipt));
 // controls
 s = hslider("speed", 7, 0.05, 20, 0.1) : ip : max(0.1); // hz
 pl = hslider("plateau", 0, 0, 1, 0.01) : ip : min(1);
-depth = nentry("depth", 2, 0, 2, 1) : min(0) : max(2) : int;
+depth = nentry("depth", 3, 1, 3, 1) : int : -(1);
 chorus_enable = checkbox("chorus");
 
 // util functions
+// delay in samples (possibly non-integer, linearly interpolating)
 fixed_fdel(n) = \(x).((1-a) * x@nInt + a * x@(nInt + 1))
 with {
      nInt = int(n);
      a = n - nInt;
 };
 
-//lfo(wf, p) = float(arg) / nSamples : wf : *(p)
-lfo(wf, p) = p * float(arg) / nSamples : wf
+// wf: waveform, for values in [0, 1]
+// p: scaling factor
+lfo(wf, p) = float(arg) / nSamples : wf : *(p)
 with {
     nSamples = int(SR / s);
     arg = +(1) ~ \(x).( x * (x % nSamples != 0)) ;
@@ -61,7 +63,7 @@ with {
 
 scanner9(morph, x1, x2, x3, x4, x5, x6, x7, x8, x9) = c1*x1 + c2*x2 + c3*x3 + c4*x4 + c5*x5 + c6*x6 + c7*x7 + c8*x8 + c9*x9
 with {
-    p = lfo(\(x).(9 - abs(x - 9)), 18);
+    p = lfo(\(x).(0.5 - abs(x - 0.5)), 16);
     //p = lfo(_, n);
     //p = lfo(\(x).(8 - abs(x - 8)), 18); // triangle lfo, 
     c1 = segment(9, 0, p) : morph;
@@ -77,7 +79,7 @@ with {
 
 scanner(n, morph) = par(i, n, c(n, i) * _) :> _
 with {
-  p = lfo(\(x).(n - abs(x - n)), 2*n);
+  p = lfo(\(x).(0.5 - abs(x - 0.5)), 2*(n-1));
   c(n, i) = segment(n, i, p) : morph;
 };
 
