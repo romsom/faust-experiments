@@ -24,6 +24,7 @@ s = hslider("speed", 7, 0.05, 20, 0.1) : ip : max(0.1); // hz
 pl = hslider("plateau", 0, 0, 1, 0.01) : ip : min(1);
 depth = nentry("depth", 3, 1, 3, 1) : int : -(1);
 chorus_enable = checkbox("chorus");
+delay_enable = checkbox("delay");
 
 // util functions
 // delay in samples (possibly non-integer, linearly interpolating)
@@ -144,5 +145,5 @@ stage(depth, n) = if(depth == 0, stage_(0, n), if(depth == 1, stage_(1, n), if(d
 process = _ <: (_ <: par(i, 9, fixed_fdel(delay_per_stage_samples * stage(depth, i))) : scanner(9, plateau(pl))), *(chorus_enable) :> /(1.0 + chorus_enable)
 with {
   // it's a really fun delay if you divide only by 1000.0 ;)
-  delay_per_stage_samples = hammond_delay_per_stage * SR_ / 1000000.0;
+  delay_per_stage_samples = hammond_delay_per_stage * SR_ / (if(delay_enable > 0.0, 1.0, 1000.0) * 1000.0);
 };
