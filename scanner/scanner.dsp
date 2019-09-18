@@ -45,39 +45,6 @@ with {
 // shifted 'hat' functions with width 2, amplitude 1
 segment(n, i, phase) = max(0, 1 - abs(phase - i)) + max(0, 1 - abs(phase - (n + i))) : min(1);
 
-scanner2(x1, x2) = crossfade * x1 + (1 - crossfade) * x2
-with {
-    // triangle lfo
-    crossfade = lfo(\(x).(0.5 - abs(x - 0.5)), 1);
-};
-     
-scanner3(x1, x2, x3) = c1*x1 + c2*x2 + c3*x3
-with {
-    
-    phase = lfo(\(x).(x/3),3); // sawtooth lfo
-
-	  c1 = segment(3, 0, phase);
-	  c2 = segment(3, 1, phase);
-	  c3 = segment(3, 2, phase);
- };
-      
-
-scanner9(morph, x1, x2, x3, x4, x5, x6, x7, x8, x9) = c1*x1 + c2*x2 + c3*x3 + c4*x4 + c5*x5 + c6*x6 + c7*x7 + c8*x8 + c9*x9
-with {
-    p = lfo(\(x).(0.5 - abs(x - 0.5)), 16);
-    //p = lfo(_, n);
-    //p = lfo(\(x).(8 - abs(x - 8)), 18); // triangle lfo, 
-    c1 = segment(9, 0, p) : morph;
-    c2 = segment(9, 1, p) : morph;
-    c3 = segment(9, 2, p) : morph;
-    c4 = segment(9, 3, p) : morph;
-    c5 = segment(9, 4, p) : morph;
-    c6 = segment(9, 5, p) : morph;
-    c7 = segment(9, 6, p) : morph;
-    c8 = segment(9, 7, p) : morph;
-    c9 = segment(9, 8, p) : morph;
-};
-
 scanner(n, morph) = par(i, n, c(n, i) * _) :> _
 with {
   p = lfo(\(x).(0.5 - abs(x - 0.5)), 2*(n-1));
@@ -87,35 +54,6 @@ with {
 hammond_delay_per_stage = 520.0 / 18.0;
 
 // delay stages for console hammond organs:
-// stage(0, 0) = 0;
-// stage(0, 1) = 1;
-// stage(0, 2) = 2;
-// stage(0, 3) = 3;
-// stage(0, 4) = 4;
-// stage(0, 5) = 5;
-// stage(0, 6) = 6;
-// stage(0, 7) = 7;
-// stage(0, 8) = 8;
-
-// stage(1, 0) = 0;
-// stage(1, 1) = 1;
-// stage(1, 2) = 2;
-// stage(1, 3) = 4;
-// stage(1, 4) = 6;
-// stage(1, 5) = 8;
-// stage(1, 6) = 9;
-// stage(1, 7) = 10;
-// stage(1, 8) = 12;
-
-// stage(2, 0) = 0;
-// stage(2, 1) = 1;
-// stage(2, 2) = 3;
-// stage(2, 3) = 6;
-// stage(2, 4) = 11;
-// stage(2, 5) = 12;
-// stage(2, 6) = 15;
-// stage(2, 7) = 17;
-// stage(2, 8) = 18;
 
 // This is a flat list of numbers of delay stages
 // Actually this would be a list of 3 lists of 9 integer values each
@@ -129,7 +67,6 @@ stages =
 // I would really like to have proper list types in faust...
 stage_(depth, n) = take(n+1, subseq(stages, 9*depth, 9));
 stage(depth, n) = if(depth == 0, stage_(0, n), if(depth == 1, stage_(1, n), if(depth == 2, stage_(2, n), 0)));
-//stage(depth, n) = case { (0) => stage(0, n)
 
 // delay stages for spinet hammond organs:
   /*
@@ -139,11 +76,12 @@ stage(depth, n) = if(depth == 0, stage_(0, n), if(depth == 1, stage_(1, n), if(d
   */
 
 
-//process = 0, 1/7, 2/7, 3/7, 4/7, 5/7, 6/7, 1  : scanner8(plateau(pl));
-//process = 1, 0, 0, 0, 0, 0, 0, 0  : scanner8(plateau(pl));
-//process = scanner8(plateau(pl));
 process = _ <: (_ <: par(i, 9, fixed_fdel(delay_per_stage_samples * stage(depth, i))) : scanner(9, plateau(pl))), *(chorus_enable) :> /(1.0 + chorus_enable)
 with {
   // it's a really fun delay if you divide only by 1000.0 ;)
   delay_per_stage_samples = hammond_delay_per_stage * SR_ / (if(delay_enable > 0.0, 1.0, 1000.0) * 1000.0);
 };
+
+// silent switch that waits until the two signals cross
+// silent_switch(select_x, x, y) = \(a, b).(if(select_x && has_settled, a, b)) ~
+// 				\(x, y, select_x, have_crossed, change).(x, y, _, 
