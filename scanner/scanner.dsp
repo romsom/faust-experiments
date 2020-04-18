@@ -1,5 +1,7 @@
 import("math.lib");
 import("filter.lib");
+LANCZOS_WINDOW_HALF = 5;
+import("../etxzat.lib");
 
 SR_MAX = 192000.0;
 SR_ = min(SR, SR_MAX);
@@ -22,17 +24,15 @@ ip = smooth(tau2pole(ipt));
 // controls
 s = hslider("speed", 7, 0.05, 20, 0.1) : ip : max(0.1); // hz
 pl = hslider("plateau", 0, 0, 1, 0.01) : ip : min(1);
+mix = hslider("mix", 0, 0, 1, 0.01) : ip : min(1);
 depth = nentry("depth", 3, 1, 3, 1) : int : -(1);
+delay_factor = nentry("delay_factor", 300, 1, 2000, 0.1) : ip : max(1) : min(2000);
 chorus_enable = checkbox("chorus");
 delay_enable = checkbox("delay");
+high_quality_enable = checkbox("high quality");
 
-// util functions
-// delay in samples (possibly non-integer, linearly interpolating)
-fixed_fdel(n) = \(x).((1-a) * x@nInt + a * x@(nInt + 1))
-with {
-     nInt = int(n);
-     a = n - nInt;
-};
+
+fixed_fdel(n, x) = if(high_quality_enable, x : lanczos_fixed_fdel(n), x : linear_fixed_fdel(n)) : _;
 
 // wf: waveform, for values in [0, 1]
 // p: scaling factor
@@ -76,10 +76,10 @@ stage(depth, n) = if(depth == 0, stage_(0, n), if(depth == 1, stage_(1, n), if(d
   */
 
 
-process = _ <: (_ <: par(i, 9, fixed_fdel(delay_per_stage_samples * stage(depth, i))) : scanner(9, plateau(pl))), *(chorus_enable) :> /(1.0 + chorus_enable)
+process = _ <: *(1 - mix), (_ <: par(i, 9, fixed_fdel(delay_per_stage_samples * stage(depth, i))) : scanner(9, plateau(pl)): *(mix)) <: +, -
 with {
   // it's a really fun delay if you divide only by 1000.0 ;)
-  delay_per_stage_samples = hammond_delay_per_stage * SR_ / (if(delay_enable > 0.0, 1.0, 1000.0) * 1000.0);
+  delay_per_stage_samples = hammond_delay_per_stage * SR_ / (if(delay_enable > 0.0, 1000.0 / delay_factor, 1000.0) * 1000.0);
 };
 
 // silent switch that waits until the two signals cross
