@@ -1,0 +1,39 @@
+import("math.lib");
+import("filter.lib");
+
+// TODO Unstetigkeiten bei 0.40 -> 0.41, 0.59 -> 0.60, 0.99 -> 1.00, Überdeckung bei window könnte eine Ursache sein
+// for debugging
+in = hslider("index", 5, 0, 2 * LANCZOS_WINDOW_HALF, 1);
+
+sinc(x) = if(fabs(x) < 1e-8, 1.0, sin(x : abs_limit) / (x : abs_limit))
+with {
+  eps = 1e-8;
+  abs_limit = fabs : max(eps);
+};
+lanczos_fixed_fdel(n) = _ : \(x).(if(n - int(n) < 10e-8, x@(int(n)), if(n < LANCZOS_WINDOW_HALF, x : linear_fixed_fdel(n), x <: par(i, 2 * LANCZOS_WINDOW_HALF + 1, lanczos(index(i), (n : max(LANCZOS_WINDOW_HALF)))) :> _))) : _
+// lanczos_fixed_fdel(n) = _ : \(x).(x <: par(i, 2 * LANCZOS_WINDOW_HALF + 1, lanczos(index(i), (n : max(LANCZOS_WINDOW_HALF)))) :> _) : _
+// lanczos_fixed_fdel(n) = lanczos(index(in), (n : max(LANCZOS_WINDOW_HALF)))
+with {
+  // TODO rounding rules?
+  index(i) = int(i - LANCZOS_WINDOW_HALF);
+  window(a) = if(fabs(a) <= PI * LANCZOS_WINDOW_HALF, sinc(a / (LANCZOS_WINDOW_HALF)), 0.0);
+  // lanczos(index, origin) = \(x).(sinc(index + origin
+  lanczos(ind, origin) = \(x).(sinc(PI * (ind + offset)) * window(PI * (ind + offset)) * x@(int(origin + ind)))
+  // lanczos(ind, origin, x) = sinc(PI * ind) * window(PI * (ind + offset)) * x@(int(origin + ind))
+  with {
+	offset = origin - int(origin);
+  };
+  // lanczos(a) = \(x).(sinc(a) *  x@(int(a)));
+};
+
+// TODO better interpolation
+// util functions
+// delay in samples (possibly non-integer, linearly interpolating)
+linear_fixed_fdel(n) = \(x).((1-a) * x@nInt + a * x@(nInt + 1))
+with {
+     nInt = int(n);
+     a = n - nInt;
+};
+
+// process = _, _ : par(i, 2, lanczos_fdel(100.75)) : _, _;
+// process = _, _ : lanczos_fixed_fdel(bd + offs), lanczos_fixed_fdel(bd + offs) : _, _;
